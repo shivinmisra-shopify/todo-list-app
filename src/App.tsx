@@ -438,7 +438,10 @@ function App() {
                       {weekTodos.map(todo => (
                         <li key={todo.id} className={`todo-item status-${todo.status} priority-${todo.priority}`}>
                           <div className="todo-content">
-                            <span className="todo-text">{todo.text}</span>
+                            <span className="todo-text">
+                              {todo.priority === 'drop everything' && <span className="priority-icon">!</span>}
+                              {todo.text}
+                            </span>
                             <span className="todo-date">
                               {todo.date.toLocaleDateString('en-US', {
                                 year: 'numeric',
