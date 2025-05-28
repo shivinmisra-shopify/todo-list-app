@@ -199,6 +199,17 @@ function App() {
 
   const deleteTodo = async (id: string) => {
     try {
+      // Find the todo element
+      const todoElement = document.querySelector(`[data-todo-id="${id}"]`);
+      if (todoElement) {
+        // Add deleting class to trigger animation
+        todoElement.classList.add('deleting');
+
+        // Wait for animation to complete before actually deleting
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+
+      // Delete from Firebase
       await deleteDoc(doc(db, 'todos', id));
     } catch (error) {
       console.error('Error deleting todo:', error);
@@ -516,7 +527,7 @@ function App() {
 
                     <ul className="todo-list">
                       {weekTodos.map(todo => (
-                        <li key={todo.id} className={`todo-item status-${todo.status} priority-${todo.priority}`}>
+                        <li key={todo.id} className={`todo-item status-${todo.status} priority-${todo.priority}`} data-todo-id={todo.id}>
                           <div className="todo-content">
                             <span className="todo-text">
                               {todo.priority === 'drop everything' && <span className="priority-icon">!</span>}

@@ -149,6 +149,8 @@ h1 {
   position: sticky;
   top: 2rem;
   height: fit-content;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .week-section h2 {
@@ -173,6 +175,15 @@ h1 {
   gap: 0.5rem;
   border-left: 4px solid #666;
   animation: slideIn 0.3s ease-out;
+  transition: all 0.3s ease-out;
+}
+
+.todo-item.deleting {
+  opacity: 0;
+  margin-bottom: 0;
+  padding: 0;
+  height: 0;
+  overflow: hidden;
 }
 
 .todo-item.status-todo {
@@ -357,6 +368,8 @@ h1 {
   padding: 0.6rem;
   border: 1px solid #e9ecef;
   height: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .sprint-reflection h3 {
@@ -373,12 +386,16 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .reflection-item {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .reflection-item label {
@@ -404,6 +421,8 @@ h1 {
   color: #000;
   white-space: pre-wrap;
   word-wrap: break-word;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .reflection-item textarea:focus {
@@ -510,6 +529,17 @@ h1 {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
   }
 }
 
