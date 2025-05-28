@@ -5,7 +5,7 @@ import { db, auth } from './firebase';
 import './App.css'
 
 type TodoStatus = 'todo' | 'progress' | 'completed';
-type Priority = 'meh' | 'do this' | 'drop everything';
+type Priority = 'low' | 'high' | 'drop everything';
 type TaskType = 'personal' | 'work';
 
 interface TodoData {
@@ -158,10 +158,10 @@ function App() {
     try {
       await addDoc(collection(db, 'todos'), {
         text: newTodo.trim(),
-        status: 'todo',
+        status: '',
         date: new Date(),
-        priority: 'meh',
-        type: 'work',
+        priority: '',
+        type: '',
         userId: user.uid
       });
       setNewTodo('');
@@ -318,19 +318,6 @@ function App() {
     });
   };
 
-  const getStatusColor = (status: TodoStatus) => {
-    switch (status) {
-      case 'todo':
-        return '#ff9800';
-      case 'progress':
-        return '#2196f3';
-      case 'completed':
-        return '#4CAF50';
-      default:
-        return '#666';
-    }
-  };
-
   const getCurrentWeekRange = () => {
     const today = new Date();
     const { startDate, endDate } = getWeekDateRange(today);
@@ -372,7 +359,7 @@ function App() {
           placeholder="Add a new todo..."
           className="todo-input"
         />
-        <button type="submit" className="add-button">Add</button>
+        <button type="submit" className="add-button" aria-label="Add todo"></button>
       </form>
 
       <div className="weeks-container">
@@ -549,9 +536,8 @@ function App() {
                               value={todo.status}
                               onChange={(e) => updateTodoStatus(todo.id, e.target.value as TodoStatus)}
                               className="status-select"
-                              style={{ borderColor: getStatusColor(todo.status) }}
                             >
-                              <option value="" disabled>Status</option>
+                              <option value="" disabled selected>Status</option>
                               <option value="todo">Todo</option>
                               <option value="progress">In Progress</option>
                               <option value="completed">Completed</option>
@@ -560,27 +546,28 @@ function App() {
                               value={todo.priority}
                               onChange={(e) => updateTodoPriority(todo.id, e.target.value as Priority)}
                               className="priority-select"
+                              required
                             >
-                              <option value="" disabled>Priority</option>
-                              <option value="meh">Meh</option>
-                              <option value="do this">Do This</option>
+                              <option value="" disabled selected>Priority</option>
+                              <option value="low">Low</option>
+                              <option value="high">High</option>
                               <option value="drop everything">Drop Everything</option>
                             </select>
                             <select
                               value={todo.type}
                               onChange={(e) => updateTodoType(todo.id, e.target.value as TaskType)}
                               className="type-select"
+                              required
                             >
-                              <option value="" disabled>Type</option>
+                              <option value="" disabled selected>Type</option>
                               <option value="work">Work</option>
                               <option value="personal">Personal</option>
                             </select>
                             <button
                               onClick={() => deleteTodo(todo.id)}
                               className="delete-button"
-                            >
-                              Delete
-                            </button>
+                              aria-label="Delete todo"
+                            ></button>
                           </div>
                         </li>
                       ))}
