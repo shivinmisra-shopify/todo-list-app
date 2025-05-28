@@ -47,6 +47,16 @@ A modern todo list application with sprint planning and reflection features, bui
      }
    }
    ```
+5. Set up Firestore security rules for production:
+  ```javascript
+  rules_version = '2';
+  service cloud.firestore {
+    match /databases/{database}/documents {
+      match /{document=**} {
+        allow read, write: if request.auth != null;
+      }
+    }
+  }
 
 ## License
 

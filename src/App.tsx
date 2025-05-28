@@ -1,19 +1,21 @@
 import { useState, useEffect } from 'react'
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, onSnapshot, setDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from './firebase';
 import './App.css'
 
 type TodoStatus = 'todo' | 'progress' | 'completed';
 type Priority = 'meh' | 'do this' | 'drop everything';
 type TaskType = 'personal' | 'work';
 
-interface Todo {
+interface TodoData {
   id: string;
   text: string;
   status: TodoStatus;
   date: Date;
   priority: Priority;
   type: TaskType;
+  userId: string;
 }
 
 interface SprintReflection {
@@ -31,21 +33,59 @@ const autoResizeTextarea = (element: HTMLTextAreaElement) => {
 };
 
 function App() {
-  const [todos, setTodos] = useState<Todo[]>([]);
+  const [todos, setTodos] = useState<TodoData[]>([]);
   const [newTodo, setNewTodo] = useState('');
   const [loading, setLoading] = useState(true);
   const [reflectionDraft, setReflectionDraft] = useState<Record<string, SprintReflection>>({});
+  const [user, setUser] = useState<any>(null);
+
+  // Auth state observer
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Sign in with Google
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Error signing in with Google:", error);
+    }
+  };
+
+  // Sign out
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
   // Load todos from Firebase
   useEffect(() => {
-    const q = query(collection(db, 'todos'), orderBy('date', 'asc'));
+    if (!user) return;
+
+    const q = query(
+      collection(db, 'todos'),
+      orderBy('date', 'asc')
+    );
+
     const unsubscribe = onSnapshot(q,
       (querySnapshot) => {
-        const todosData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          date: doc.data().date.toDate()
-        })) as Todo[];
+        const todosData = querySnapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            date: doc.data().date.toDate()
+          } as TodoData))
+          .filter(todo => todo.userId === user.uid) as TodoData[];
         setTodos(todosData);
         setLoading(false);
       },
@@ -56,16 +96,21 @@ function App() {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   // Load reflections from Firebase
   useEffect(() => {
+    if (!user) return;
+
     const loadReflections = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'reflections'));
         const reflectionsData: Record<string, SprintReflection> = {};
         querySnapshot.forEach((doc) => {
-          reflectionsData[doc.id] = doc.data() as SprintReflection;
+          const data = doc.data();
+          if (data.userId === user.uid) {
+            reflectionsData[doc.id] = data as SprintReflection;
+          }
         });
         setReflectionDraft(reflectionsData);
       } catch (error) {
@@ -73,7 +118,7 @@ function App() {
       }
     };
     loadReflections();
-  }, []);
+  }, [user]);
 
   // Add this after the other useEffect hooks
   useEffect(() => {
@@ -116,7 +161,8 @@ function App() {
         status: 'todo',
         date: new Date(),
         priority: 'meh',
-        type: 'work' // default type
+        type: 'work',
+        userId: user.uid
       });
       setNewTodo('');
     } catch (error) {
@@ -179,7 +225,10 @@ function App() {
   const submitReflection = async (weekKey: string) => {
     try {
       const reflectionRef = doc(db, 'reflections', weekKey);
-      const reflectionData = reflectionDraft[weekKey];
+      const reflectionData = {
+        ...reflectionDraft[weekKey],
+        userId: user.uid
+      };
 
       if (reflectionData) {
         await setDoc(reflectionRef, reflectionData);
@@ -224,7 +273,7 @@ function App() {
     return `${formatDate(startDate)} - ${formatDate(endDate)}`;
   };
 
-  const getWeekStats = (weekTodos: Todo[]) => {
+  const getWeekStats = (weekTodos: TodoData[]) => {
     const total = weekTodos.length;
     const completed = weekTodos.filter(todo => todo.status === 'completed').length;
     const inProgress = weekTodos.filter(todo => todo.status === 'progress').length;
@@ -249,7 +298,7 @@ function App() {
       }
       acc[weekKey].push(todo);
       return acc;
-    }, {} as Record<string, Todo[]>);
+    }, {} as Record<string, TodoData[]>);
 
     return Object.entries(grouped).sort((a, b) => {
       const dateA = new Date(a[0].split(' - ')[0]);
@@ -281,9 +330,28 @@ function App() {
     return <div className="loading">Loading...</div>;
   }
 
+  if (!user) {
+    return (
+      <div className="auth-container">
+        <h1>Week Planner</h1>
+        <button onClick={signInWithGoogle} className="google-sign-in">
+          Sign in with Google
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="todo-app">
-      <h1>Week planner</h1>
+      <div className="header">
+        <h1>Week planner</h1>
+        <div className="user-info">
+          <span className="user-name">{user.displayName}</span>
+          <button onClick={handleSignOut} className="sign-out-button">
+            Sign Out
+          </button>
+        </div>
+      </div>
 
       <form onSubmit={addTodo} className="todo-form">
         <input
