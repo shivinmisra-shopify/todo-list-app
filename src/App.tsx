@@ -5,6 +5,7 @@ import './App.css'
 
 type TodoStatus = 'todo' | 'progress' | 'completed';
 type Priority = 'meh' | 'do this' | 'drop everything';
+type TaskType = 'personal' | 'work';
 
 interface Todo {
   id: string;
@@ -12,6 +13,7 @@ interface Todo {
   status: TodoStatus;
   date: Date;
   priority: Priority;
+  type: TaskType;
 }
 
 interface SprintReflection {
@@ -113,7 +115,8 @@ function App() {
         text: newTodo.trim(),
         status: 'todo',
         date: new Date(),
-        priority: 'meh' // default priority
+        priority: 'meh',
+        type: 'work' // default type
       });
       setNewTodo('');
     } catch (error) {
@@ -136,6 +139,15 @@ function App() {
       await updateDoc(todoRef, { priority: newPriority });
     } catch (error) {
       console.error('Error updating todo priority:', error);
+    }
+  };
+
+  const updateTodoType = async (id: string, newType: TaskType) => {
+    try {
+      const todoRef = doc(db, 'todos', id);
+      await updateDoc(todoRef, { type: newType });
+    } catch (error) {
+      console.error('Error updating todo type:', error);
     }
   };
 
@@ -440,6 +452,9 @@ function App() {
                           <div className="todo-content">
                             <span className="todo-text">
                               {todo.priority === 'drop everything' && <span className="priority-icon">!</span>}
+                              <span className={`type-indicator ${todo.type}`}>
+                                {todo.type === 'personal' ? '🏠' : '💼'}
+                              </span>
                               {todo.text}
                             </span>
                             <span className="todo-date">
@@ -471,6 +486,15 @@ function App() {
                               <option value="meh">Meh</option>
                               <option value="do this">Do This</option>
                               <option value="drop everything">Drop Everything</option>
+                            </select>
+                            <select
+                              value={todo.type}
+                              onChange={(e) => updateTodoType(todo.id, e.target.value as TaskType)}
+                              className="type-select"
+                            >
+                              <option value="" disabled>Type</option>
+                              <option value="work">Work</option>
+                              <option value="personal">Personal</option>
                             </select>
                             <button
                               onClick={() => deleteTodo(todo.id)}

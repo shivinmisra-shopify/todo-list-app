@@ -512,3 +512,61 @@ h1 {
     transform: translateY(0);
   }
 }
+
+.type-select {
+  padding: 0.5rem;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  background-color: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+  min-width: 120px;
+  color: #333;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.type-select:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.type-select:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.type-select:focus {
+  outline: none;
+}
+
+.type-select option[value="work"] {
+  color: #2196f3;
+}
+
+.type-select option[value="personal"] {
+  color: #9c27b0;
+}
+
+.type-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+  vertical-align: middle;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.type-indicator:hover {
+  transform: scale(1.1);
+}
+
+.type-indicator.work {
+  color: #2196f3;
+}
+
+.type-indicator.personal {
+  color: #9c27b0;
+}
