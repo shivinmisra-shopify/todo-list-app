@@ -38,6 +38,9 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [reflectionDraft, setReflectionDraft] = useState<Record<string, SprintReflection>>({});
   const [user, setUser] = useState<any>(null);
+  const [editingTodo, setEditingTodo] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [showNotification, setShowNotification] = useState(false);
 
   // Auth state observer
   useEffect(() => {
@@ -85,7 +88,12 @@ function App() {
             ...doc.data(),
             date: doc.data().date.toDate()
           } as TodoData))
-          .filter(todo => todo.userId === user.uid) as TodoData[];
+          .filter(todo => {
+            // Include tasks that either:
+            // 1. Have the current user's ID, or
+            // 2. Don't have a userId field (legacy tasks)
+            return todo.userId === user.uid || !todo.userId;
+          }) as TodoData[];
         setTodos(todosData);
         setLoading(false);
       },
@@ -243,6 +251,10 @@ function App() {
 
       if (reflectionData) {
         await setDoc(reflectionRef, reflectionData);
+
+        // Show notification
+        setShowNotification(true);
+        setTimeout(() => setShowNotification(false), 3000);
       }
     } catch (error) {
       console.error('Error submitting reflection:', error);
@@ -304,6 +316,7 @@ function App() {
     const grouped = todos.reduce((acc, todo) => {
       const { startDate, endDate } = getWeekDateRange(todo.date);
       const weekKey = formatDateRange(startDate, endDate);
+
       if (!acc[weekKey]) {
         acc[weekKey] = [];
       }
@@ -322,6 +335,41 @@ function App() {
     const today = new Date();
     const { startDate, endDate } = getWeekDateRange(today);
     return formatDateRange(startDate, endDate);
+  };
+
+  const updateTodoText = async (id: string, newText: string) => {
+    try {
+      const todoRef = doc(db, 'todos', id);
+      await updateDoc(todoRef, { text: newText.trim() });
+    } catch (error) {
+      console.error('Error updating todo text:', error);
+    }
+  };
+
+  const startEditing = (id: string, currentText: string) => {
+    setEditingTodo(id);
+    setEditText(currentText);
+  };
+
+  const saveEdit = async (id: string) => {
+    if (editText.trim() !== '') {
+      await updateTodoText(id, editText);
+    }
+    setEditingTodo(null);
+    setEditText('');
+  };
+
+  const cancelEdit = () => {
+    setEditingTodo(null);
+    setEditText('');
+  };
+
+  const handleEditKeyPress = (e: React.KeyboardEvent, id: string) => {
+    if (e.key === 'Enter') {
+      saveEdit(id);
+    } else if (e.key === 'Escape') {
+      cancelEdit();
+    }
   };
 
   if (loading) {
@@ -521,7 +569,24 @@ function App() {
                               <span className={`type-indicator ${todo.type}`}>
                                 {todo.type === 'personal' ? '🏠' : '💼'}
                               </span>
-                              {todo.text}
+                              {editingTodo === todo.id ? (
+                                <input
+                                  type="text"
+                                  value={editText}
+                                  onChange={(e) => setEditText(e.target.value)}
+                                  onKeyDown={(e) => handleEditKeyPress(e, todo.id)}
+                                  onBlur={() => saveEdit(todo.id)}
+                                  className="edit-input"
+                                  autoFocus
+                                />
+                              ) : (
+                                <span
+                                  className="editable-text"
+                                  onClick={() => startEditing(todo.id, todo.text)}
+                                >
+                                  {todo.text}
+                                </span>
+                              )}
                             </span>
                             <span className="todo-date">
                               {todo.date.toLocaleDateString('en-US', {
@@ -647,6 +712,12 @@ function App() {
           });
         })()}
       </div>
+
+      {showNotification && (
+        <div className="notification">
+          <span>Reflection saved!</span>
+        </div>
+      )}
     </div>
   )
 }

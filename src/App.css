@@ -227,6 +227,34 @@ h1 {
   text-shadow: 0.5px 0.5px 0.5px rgba(0, 0, 0, 0.1);
 }
 
+.editable-text {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+
+.editable-text:hover {
+  background-color: #f0f0f0;
+}
+
+.edit-input {
+  background: white;
+  border: 2px solid #4CAF50;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  outline: none;
+  min-width: 200px;
+}
+
+.edit-input:focus {
+  border-color: #45a049;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
 .todo-date {
   color: #666;
   font-size: 0.9rem;
@@ -858,4 +886,29 @@ h1 {
 
 .sign-out-button:active {
   transform: translateY(1px);
+}
+
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: #4CAF50;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  animation: slideInRight 0.3s ease-out;
+  font-weight: 500;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
