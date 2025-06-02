@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { getAuth, setPersistence, browserSessionPersistence } from 'firebase/auth';
 
 // Your web app's Firebase configuration
 // Replace these values with your own from the Firebase Console
@@ -21,3 +21,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+
+// Set auth persistence to session only (won't persist across browser restarts)
+setPersistence(auth, browserSessionPersistence).catch((error) => {
+  console.error("Error setting auth persistence:", error);
+});

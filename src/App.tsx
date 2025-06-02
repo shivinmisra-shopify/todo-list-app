@@ -59,6 +59,11 @@ function App() {
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     try {
+      // Force account selection every time
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error("Error signing in with Google:", error);
@@ -68,7 +73,23 @@ function App() {
   // Sign out
   const handleSignOut = async () => {
     try {
+      // Clear any local storage or session storage
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // Sign out from Firebase
       await signOut(auth);
+
+      // Clear all state
+      setTodos([]);
+      setReflectionDraft({});
+      setUser(null);
+      setEditingTodo(null);
+      setEditText('');
+      setShowNotification(false);
+      setDraggedTodo(null);
+      setDraggedOverTodo(null);
+
     } catch (error) {
       console.error("Error signing out:", error);
     }
