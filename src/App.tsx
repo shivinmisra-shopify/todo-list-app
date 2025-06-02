@@ -16,6 +16,7 @@ interface TodoData {
   priority: Priority;
   type: TaskType;
   userId: string;
+  order?: number;
 }
 
 interface SprintReflection {
@@ -41,6 +42,8 @@ function App() {
   const [editingTodo, setEditingTodo] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [showNotification, setShowNotification] = useState(false);
+  const [draggedTodo, setDraggedTodo] = useState<string | null>(null);
+  const [draggedOverTodo, setDraggedOverTodo] = useState<string | null>(null);
 
   // Auth state observer
   useEffect(() => {
@@ -163,6 +166,18 @@ function App() {
     e.preventDefault();
     if (newTodo.trim() === '') return;
 
+    // Get the highest order number for the current week
+    const currentWeekTodos = todos.filter(todo => {
+      const { startDate, endDate } = getWeekDateRange(todo.date);
+      const todoWeek = formatDateRange(startDate, endDate);
+      const currentWeek = getCurrentWeekRange();
+      return todoWeek === currentWeek;
+    });
+
+    const maxOrder = currentWeekTodos.length > 0
+      ? Math.max(...currentWeekTodos.map(t => t.order || 0))
+      : 0;
+
     try {
       await addDoc(collection(db, 'todos'), {
         text: newTodo.trim(),
@@ -170,7 +185,8 @@ function App() {
         date: new Date(),
         priority: '',
         type: '',
-        userId: user.uid
+        userId: user.uid,
+        order: maxOrder + 1
       });
       setNewTodo('');
     } catch (error) {
@@ -372,6 +388,63 @@ function App() {
     }
   };
 
+  const reorderTodos = async (draggedId: string, targetId: string, weekTodos: TodoData[]) => {
+    const draggedIndex = weekTodos.findIndex(todo => todo.id === draggedId);
+    const targetIndex = weekTodos.findIndex(todo => todo.id === targetId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    // Create a new array with reordered items
+    const reorderedTodos = [...weekTodos];
+    const [draggedItem] = reorderedTodos.splice(draggedIndex, 1);
+    reorderedTodos.splice(targetIndex, 0, draggedItem);
+
+    // Update order values for all affected todos
+    const updates = reorderedTodos.map((todo, index) => ({
+      id: todo.id,
+      order: index + 1
+    }));
+
+    // Update Firebase for all affected todos
+    try {
+      const updatePromises = updates.map(({ id, order }) =>
+        updateDoc(doc(db, 'todos', id), { order })
+      );
+      await Promise.all(updatePromises);
+    } catch (error) {
+      console.error('Error reordering todos:', error);
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, todoId: string) => {
+    setDraggedTodo(todoId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, todoId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDraggedOverTodo(todoId);
+  };
+
+  const handleDragLeave = () => {
+    setDraggedOverTodo(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string, weekTodos: TodoData[]) => {
+    e.preventDefault();
+    if (draggedTodo && draggedTodo !== targetId) {
+      reorderTodos(draggedTodo, targetId, weekTodos);
+    }
+    setDraggedTodo(null);
+    setDraggedOverTodo(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedTodo(null);
+    setDraggedOverTodo(null);
+  };
+
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
@@ -561,33 +634,52 @@ function App() {
                     </div>
 
                     <ul className="todo-list">
-                      {weekTodos.map(todo => (
-                        <li key={todo.id} className={`todo-item status-${todo.status} priority-${todo.priority}`} data-todo-id={todo.id}>
+                      {weekTodos
+                        .sort((a, b) => (a.order || 0) - (b.order || 0))
+                        .map(todo => (
+                        <li
+                          key={todo.id}
+                          className={`todo-item status-${todo.status} priority-${todo.priority} ${
+                            draggedTodo === todo.id ? 'dragging' : ''
+                          } ${
+                            draggedOverTodo === todo.id ? 'drag-over' : ''
+                          }`}
+                          data-todo-id={todo.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, todo.id)}
+                          onDragOver={(e) => handleDragOver(e, todo.id)}
+                          onDragLeave={handleDragLeave}
+                          onDrop={(e) => handleDrop(e, todo.id, weekTodos)}
+                          onDragEnd={handleDragEnd}
+                        >
                           <div className="todo-content">
-                            <span className="todo-text">
-                              {todo.priority === 'drop everything' && <span className="priority-icon">!</span>}
-                              <span className={`type-indicator ${todo.type}`}>
-                                {todo.type === 'personal' ? '🏠' : '💼'}
-                              </span>
-                              {editingTodo === todo.id ? (
-                                <input
-                                  type="text"
-                                  value={editText}
-                                  onChange={(e) => setEditText(e.target.value)}
-                                  onKeyDown={(e) => handleEditKeyPress(e, todo.id)}
-                                  onBlur={() => saveEdit(todo.id)}
-                                  className="edit-input"
-                                  autoFocus
-                                />
-                              ) : (
-                                <span
-                                  className="editable-text"
-                                  onClick={() => startEditing(todo.id, todo.text)}
-                                >
-                                  {todo.text}
+                            <div className="todo-header">
+                              <span className="drag-handle">⋮⋮</span>
+                              <span className="todo-text">
+                                {todo.priority === 'drop everything' && <span className="priority-icon">!</span>}
+                                <span className={`type-indicator ${todo.type}`}>
+                                  {todo.type === 'personal' ? '🏠' : '💼'}
                                 </span>
-                              )}
-                            </span>
+                                {editingTodo === todo.id ? (
+                                  <input
+                                    type="text"
+                                    value={editText}
+                                    onChange={(e) => setEditText(e.target.value)}
+                                    onKeyDown={(e) => handleEditKeyPress(e, todo.id)}
+                                    onBlur={() => saveEdit(todo.id)}
+                                    className="edit-input"
+                                    autoFocus
+                                  />
+                                ) : (
+                                  <span
+                                    className="editable-text"
+                                    onClick={() => startEditing(todo.id, todo.text)}
+                                  >
+                                    {todo.text}
+                                  </span>
+                                )}
+                              </span>
+                            </div>
                             <span className="todo-date">
                               {todo.date.toLocaleDateString('en-US', {
                                 year: 'numeric',
