@@ -204,10 +204,10 @@ function App() {
     try {
       await addDoc(collection(db, 'todos'), {
         text: newTodo.trim(),
-        status: '',
+        status: '', // No default status
         date: new Date(),
-        priority: '',
-        type: '',
+        priority: 'low', // Default priority
+        type: 'work', // Default type
         userId: user.uid,
         order: maxOrder + 1
       });
@@ -791,7 +791,6 @@ function App() {
                               className="status-select"
                             >
                               <option value="" disabled selected>Status</option>
-                              <option value="todo">Todo</option>
                               <option value="progress">In Progress</option>
                               <option value="completed">Completed</option>
                             </select>
