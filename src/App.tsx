@@ -44,6 +44,7 @@ function App() {
   const [showNotification, setShowNotification] = useState(false);
   const [draggedTodo, setDraggedTodo] = useState<string | null>(null);
   const [draggedOverTodo, setDraggedOverTodo] = useState<string | null>(null);
+  const [draggedOverWeek, setDraggedOverWeek] = useState<string | null>(null);
 
   // Auth state observer
   useEffect(() => {
@@ -89,6 +90,7 @@ function App() {
       setShowNotification(false);
       setDraggedTodo(null);
       setDraggedOverTodo(null);
+      setDraggedOverWeek(null);
 
     } catch (error) {
       console.error("Error signing out:", error);
@@ -452,16 +454,84 @@ function App() {
     setDraggedOverTodo(null);
   };
 
-  const handleDrop = (e: React.DragEvent, targetId: string, weekTodos: TodoData[]) => {
+  const handleDrop = (e: React.DragEvent, targetId: string, weekTodos: TodoData[], weekRange: string) => {
     e.preventDefault();
     if (draggedTodo && draggedTodo !== targetId) {
-      reorderTodos(draggedTodo, targetId, weekTodos);
+      // If dropping from another week, update the date
+      const draggedTask = todos.find(t => t.id === draggedTodo);
+      if (draggedTask) {
+        const { startDate } = getWeekDateRange(new Date(weekRange.split(' - ')[0]));
+        if (draggedTask.date.getTime() !== startDate.getTime()) {
+          // Move to new week and insert at the right position
+          reorderTodosCrossWeek(draggedTodo, targetId, weekTodos, startDate);
+        } else {
+          // Same week, just reorder
+          reorderTodos(draggedTodo, targetId, weekTodos);
+        }
+      }
     }
+    setDraggedTodo(null);
+    setDraggedOverTodo(null);
+    setDraggedOverWeek(null);
+  };
+
+  // New: cross-week reordering
+  const reorderTodosCrossWeek = async (draggedId: string, targetId: string | null, weekTodos: TodoData[], newDate: Date) => {
+    let newWeekTodos = [...weekTodos];
+    const draggedTask = todos.find(t => t.id === draggedId);
+    if (!draggedTask) return;
+    if (targetId) {
+      const targetIndex = newWeekTodos.findIndex(todo => todo.id === targetId);
+      if (targetIndex === -1) return;
+      newWeekTodos.splice(targetIndex, 0, { ...draggedTask, date: newDate });
+    } else {
+      // Drop at the end
+      newWeekTodos.push({ ...draggedTask, date: newDate });
+    }
+    // Update order for all
+    const updates = newWeekTodos.map((todo, index) => ({
+      id: todo.id,
+      order: index + 1,
+      date: todo.id === draggedId ? newDate : todo.date
+    }));
+    try {
+      const updatePromises = updates.map(({ id, order, date }) =>
+        updateDoc(doc(db, 'todos', id), { order, date })
+      );
+      await Promise.all(updatePromises);
+    } catch (error) {
+      console.error('Error moving and reordering todos:', error);
+    }
+  };
+
+  const handleDragEnd = () => {
     setDraggedTodo(null);
     setDraggedOverTodo(null);
   };
 
-  const handleDragEnd = () => {
+  // New: handle dropping on a week section
+  const handleWeekDragOver = (e: React.DragEvent, weekRange: string) => {
+    e.preventDefault();
+    setDraggedOverWeek(weekRange);
+  };
+
+  const handleWeekDrop = async (e: React.DragEvent, weekRange: string, weekTodos: TodoData[]) => {
+    e.preventDefault();
+    setDraggedOverWeek(null);
+    if (!draggedTodo) return;
+    // If the task is already in this week, do nothing (handled by item drop)
+    const todo = todos.find(t => t.id === draggedTodo);
+    if (!todo) return;
+    const { startDate } = getWeekDateRange(new Date(weekRange.split(' - ')[0]));
+    // Only move if week is different
+    const currentWeekRange = formatDateRange(...Object.values(getWeekDateRange(todo.date)).slice(0,2) as [Date, Date]);
+    if (currentWeekRange === weekRange) return;
+    // Drop at the end
+    try {
+      await reorderTodosCrossWeek(draggedTodo, null, weekTodos, startDate);
+    } catch (error) {
+      console.error('Error moving todo to another week:', error);
+    }
     setDraggedTodo(null);
     setDraggedOverTodo(null);
   };
@@ -627,7 +697,12 @@ function App() {
             };
 
             return (
-              <div key={weekRange} className="week-section">
+              <div
+                key={weekRange}
+                className={`week-section${draggedOverWeek === weekRange ? ' week-drag-over' : ''}`}
+                onDragOver={(e) => handleWeekDragOver(e, weekRange)}
+                onDrop={(e) => handleWeekDrop(e, weekRange, weekTodos)}
+              >
                 <h2>{weekRange}</h2>
                 <div className="week-content">
                   <div className="tasks-column">
@@ -670,7 +745,7 @@ function App() {
                           onDragStart={(e) => handleDragStart(e, todo.id)}
                           onDragOver={(e) => handleDragOver(e, todo.id)}
                           onDragLeave={handleDragLeave}
-                          onDrop={(e) => handleDrop(e, todo.id, weekTodos)}
+                          onDrop={(e) => handleDrop(e, todo.id, weekTodos, weekRange)}
                           onDragEnd={handleDragEnd}
                         >
                           <div className="todo-content">

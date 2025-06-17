@@ -964,3 +964,10 @@ h1 {
     transform: translateX(0);
   }
 }
+
+.week-section.week-drag-over {
+  outline: 3px dashed #4CAF50;
+  background-color: #e8f5e9;
+  border-radius: 8px;
+  transition: background 0.2s, outline 0.2s;
+}
