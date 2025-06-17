@@ -966,8 +966,28 @@ h1 {
 }
 
 .week-section.week-drag-over {
-  outline: 3px dashed #4CAF50;
-  background-color: #e8f5e9;
-  border-radius: 8px;
-  transition: background 0.2s, outline 0.2s;
+  /* outline: 3px dashed #4CAF50; */
+  /* background-color: #e8f5e9; */
+  /* border-radius: 8px; */
+  /* transition: background 0.2s, outline 0.2s; */
+}
+
+.drop-indicator {
+  height: 0;
+  border-top: 4px solid #4CAF50;
+  margin: 0.25rem 0;
+  border-radius: 2px;
+  background: none;
+  list-style: none;
+  pointer-events: none;
+}
+
+.drop-indicator-between {
+  height: 0;
+  border-top: 4px solid #2196f3;
+  margin: 0.25rem 0;
+  border-radius: 2px;
+  background: none;
+  list-style: none;
+  pointer-events: none;
 }
